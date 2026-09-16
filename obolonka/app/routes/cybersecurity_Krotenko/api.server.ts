@@ -3,7 +3,7 @@ import type {
   CybersecuritySnapshot,
 } from "./types";
 
-const SNAPSHOT_TIMEOUT_MS = 5_000;
+const SNAPSHOT_TIMEOUT_MS = 8_000;
 
 /**
  * Завантажує агрегований snapshot через внутрішню Docker-мережу.
@@ -43,7 +43,7 @@ export async function loadCybersecurityDashboard(): Promise<CybersecurityDashboa
   } catch (error) {
     const message =
       error instanceof Error && error.name === "AbortError"
-        ? "Cybersecurity API не відповів протягом 5 секунд."
+        ? "Cybersecurity API не відповів протягом 8 секунд."
         : "Не вдалося підключитися до Cybersecurity API.";
 
     return { snapshot: null, error: message, fetchedAt };
