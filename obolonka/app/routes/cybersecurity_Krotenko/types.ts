@@ -99,7 +99,6 @@ export interface PolicyMetrics {
   incidents_high: number;
   incidents_medium: number;
   incidents_low: number;
-  by_credential_attack: number;
   by_availability_attack: number;
   by_integrity_attack: number;
   by_outage: number;
@@ -116,26 +115,25 @@ export interface Incident {
   createdAt: string;
 }
 
-export interface Decision {
-  id: string;
-  priority: "high" | "medium" | "low";
-  title: string;
-  description: string;
-  reason: string;
-  targetComponents: string[];
-  relatedIncidentIds: string[];
-  executionMode: "manual" | "read_only" | "blocked";
-}
-
 export interface DispatchAction {
   id: string;
   decisionId: string;
-  mode: "applied" | "recommended" | "unsupported";
+  mode: "applied" | "recommended" | "failed" | "unsupported";
   title: string;
   description: string;
   targetComponents: string[];
   reason: string;
   createdAt: string;
+}
+
+export interface TelemetryEvent {
+  timestamp: string;
+  source: string;
+  component: string;
+  key: string;
+  value: string;
+  unit: string;
+  analyzed: boolean;
 }
 
 export interface CybersecuritySnapshot {
@@ -170,18 +168,27 @@ export interface CybersecuritySnapshot {
     summary: MetricsSummary;
     byPolicy: PolicyMetrics[];
   };
+  telemetry?: {
+    generatedAt: string;
+    status: "streaming" | "waiting";
+    mode: "near-real-time";
+    topic: string;
+    analyzedKeys: string[];
+    summary: {
+      visible: number;
+      analyzed: number;
+      collectedOnly: number;
+    };
+    events: TelemetryEvent[];
+  };
   incidents: {
     generatedAt: string;
     summary: {
       totalIncidents: number;
       criticalIncidents: number;
       warningIncidents: number;
-      totalDecisions: number;
-      highPriorityDecisions: number;
-      blockedDecisions: number;
     };
     incidents: Incident[];
-    decisions: Decision[];
   };
   actions: {
     generatedAt: string;
@@ -189,6 +196,7 @@ export interface CybersecuritySnapshot {
       total: number;
       applied: number;
       recommended: number;
+      failed: number;
       unsupported: number;
     };
     actions: DispatchAction[];
