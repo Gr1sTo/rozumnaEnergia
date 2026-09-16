@@ -1,5 +1,5 @@
 x-cybersecurity-service: &cybersecurity-service
-  image: "${CYBERSECURITY_IMAGE:-rostislavkrotenko/cybersecurity-smartenergy:1.0.0}"
+  image: "${CYBERSECURITY_IMAGE:-rostyslavkrotenko/cybersecurity-smartenergy:latest}"
   platform: linux/amd64
   restart: unless-stopped
   volumes:
@@ -323,6 +323,7 @@ services:
       SMARTENERGY_LIVE_MODE: "1"
       CYBERSECURITY_INTEGRATION_MODE: active
       CYBERSECURITY_SNAPSHOT_SOURCE: real-collector
+      CYBERSECURITY_EVENTS_PATH: /work/data/integration/collected_events.jsonl
       CYBERSECURITY_EXTERNAL_READS: "true"
       CYBERSECURITY_ADAPTER_TIMEOUT_SEC: "${CYBERSECURITY_ADAPTER_TIMEOUT_SEC:-2}"
       CYBERSECURITY_GATEWAY_URL: >-
