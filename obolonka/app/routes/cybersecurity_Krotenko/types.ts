@@ -43,6 +43,27 @@ export interface ServiceResult {
   statusCode: number | null;
   detail: string;
   corsLimited: boolean;
+  gatewayState?: {
+    serviceId: string;
+    blockedCount: number;
+    isolation: {
+      enabled: boolean;
+      reason: string;
+    };
+    rateLimit: {
+      enabled: boolean;
+      ratePerSecond: number;
+      burstCapacity: number;
+      actionId: string;
+    };
+    circuit: {
+      mode: string;
+    };
+    cache: {
+      entries: number;
+      ttlSec: number;
+    };
+  } | null;
 }
 
 export interface AdapterMetric {
@@ -111,6 +132,7 @@ export interface Incident {
   title: string;
   description: string;
   affectedComponents: string[];
+  serviceId?: string | null;
   evidence: string[];
   createdAt: string;
 }
@@ -122,6 +144,7 @@ export interface DispatchAction {
   title: string;
   description: string;
   targetComponents: string[];
+  serviceId?: string | null;
   reason: string;
   createdAt: string;
 }
@@ -134,6 +157,17 @@ export interface TelemetryEvent {
   value: string;
   unit: string;
   analyzed: boolean;
+}
+
+export interface QuarantinedTelemetryEvent {
+  quarantinedAt: string;
+  reasons: string[];
+  timestamp: string;
+  source: string;
+  component: string;
+  key: string;
+  value: string;
+  unit: string;
 }
 
 export interface CybersecuritySnapshot {
@@ -178,8 +212,14 @@ export interface CybersecuritySnapshot {
       visible: number;
       analyzed: number;
       collectedOnly: number;
+      quarantined: number;
     };
     events: TelemetryEvent[];
+    quarantine: {
+      status: "active" | "empty";
+      visible: number;
+      events: QuarantinedTelemetryEvent[];
+    };
   };
   incidents: {
     generatedAt: string;
