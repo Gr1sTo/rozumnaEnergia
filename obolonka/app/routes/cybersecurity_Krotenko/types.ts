@@ -1,9 +1,13 @@
 export type ServiceStatus = "online" | "degraded" | "offline" | "unchecked";
 export type AdapterStatus = "ready" | "partial" | "stale" | "unavailable";
 export type SignalLevel = "normal" | "warning" | "critical";
+export type MetricsStatus = "ready" | "no_data";
+export type PolicyStatus = "detected" | "not_detected" | "no_data";
 
 export interface CybersecurityBackend {
   status: string;
+  coreProtectionStatus?: string;
+  externalAvailabilityStatus?: string;
   integrationHealth: string;
   integrationMode: string;
   publicPort: number;
@@ -22,6 +26,35 @@ export interface ComponentSummary {
   offline: number;
   unchecked: number;
   criticalOffline: number;
+}
+
+export interface GatewayRateLimit {
+  enabled: boolean;
+  ratePerSecond: number;
+  burstCapacity: number;
+  actionId: string;
+}
+
+export interface GatewayMetrics {
+  uptimeSec?: number;
+  totalRequests?: number;
+  outcomes?: Record<string, number>;
+  statusCodes?: Record<string, number>;
+  actions?: Record<string, number>;
+  availabilityPct?: number;
+  trafficTimeline?: {
+    bucketSec: number;
+    windowSec: number;
+    points: Array<{
+      timestamp: string;
+      requests: number;
+      requestsPerSecond: number;
+      forwarded: number;
+      limited: number;
+      blocked: number;
+      errors: number;
+    }>;
+  };
 }
 
 export interface ServiceResult {
@@ -43,6 +76,12 @@ export interface ServiceResult {
   statusCode: number | null;
   detail: string;
   corsLimited: boolean;
+  mitigation?: {
+    blocking?: boolean;
+    isolation?: boolean;
+    circuitOpen?: boolean;
+    rateLimitHardened?: boolean;
+  };
   gatewayState?: {
     serviceId: string;
     blockedCount: number;
@@ -50,19 +89,17 @@ export interface ServiceResult {
       enabled: boolean;
       reason: string;
     };
-    rateLimit: {
-      enabled: boolean;
-      ratePerSecond: number;
-      burstCapacity: number;
-      actionId: string;
-    };
+    rateLimit: GatewayRateLimit;
+    baselineRateLimit?: GatewayRateLimit;
     circuit: {
       mode: string;
+      failureCount?: number;
     };
     cache: {
       entries: number;
       ttlSec: number;
     };
+    metrics?: GatewayMetrics;
   } | null;
 }
 
@@ -102,19 +139,22 @@ export interface AdapterResult {
 
 export interface MetricsSummary {
   policies: number;
-  avgAvailabilityPct: number;
-  avgMttdMin: number;
-  avgMttrMin: number;
+  detectedByPolicies: number;
+  avgAvailabilityPct: number | null;
+  avgMttdMin: number | null;
+  avgMttrMin: number | null;
   totalIncidents: number;
   totalActions: number;
 }
 
 export interface PolicyMetrics {
   policy: string;
-  availability_pct: number;
-  total_downtime_hr: number;
-  mean_mttd_min: number;
-  mean_mttr_min: number;
+  status?: PolicyStatus;
+  detected?: boolean;
+  availability_pct: number | null;
+  total_downtime_hr: number | null;
+  mean_mttd_min: number | null;
+  mean_mttr_min: number | null;
   incidents_total: number;
   incidents_critical: number;
   incidents_high: number;
@@ -129,10 +169,14 @@ export interface Incident {
   id: string;
   ruleId: string;
   severity: "critical" | "warning";
+  status?: "active" | "resolved";
   title: string;
   description: string;
   affectedComponents: string[];
   serviceId?: string | null;
+  source?: string | null;
+  policies?: string[];
+  incidentIds?: string[];
   evidence: string[];
   createdAt: string;
 }
@@ -199,6 +243,7 @@ export interface CybersecuritySnapshot {
   };
   metrics: {
     generatedAt: string;
+    status?: MetricsStatus;
     summary: MetricsSummary;
     byPolicy: PolicyMetrics[];
   };
@@ -216,8 +261,11 @@ export interface CybersecuritySnapshot {
     };
     events: TelemetryEvent[];
     quarantine: {
-      status: "active" | "empty";
+      status: "active" | "history" | "empty";
       visible: number;
+      active?: number;
+      activeWindowSec?: number;
+      lastQuarantinedAt?: string | null;
       events: QuarantinedTelemetryEvent[];
     };
   };
@@ -225,10 +273,13 @@ export interface CybersecuritySnapshot {
     generatedAt: string;
     summary: {
       totalIncidents: number;
+      activeIncidents?: number;
+      recentlyResolved?: number;
       criticalIncidents: number;
       warningIncidents: number;
     };
     incidents: Incident[];
+    recentlyResolved?: Incident[];
   };
   actions: {
     generatedAt: string;
