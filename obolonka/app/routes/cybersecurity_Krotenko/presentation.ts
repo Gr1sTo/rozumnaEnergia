@@ -16,11 +16,13 @@ const statusLabels: Record<string, string> = {
   connected: "Підключено",
   critical: "Критичний",
   degraded: "Деградація",
+  detected: "Виявлено",
   disconnected: "Немає зв'язку",
   down: "Не працює",
   failed: "Помилка",
   high: "Високий",
   healthy: "Штатний",
+  history: "Історія",
   isolated: "Ізольовано",
   low: "Низький",
   manual: "Ручний",
@@ -28,10 +30,14 @@ const statusLabels: Record<string, string> = {
   offline: "Недоступний",
   online: "Працює",
   partial: "Частково",
+  no_data: "Немає даних",
+  not_configured: "Не налаштовано",
+  not_detected: "Не виявлено",
   read_only: "Лише читання",
   ready: "Готовий",
   rate_limited: "Трафік обмежено",
   recommended: "Сформовано",
+  resolved: "Завершено",
   shadow: "Тіньовий",
   stale: "Застарілі дані",
   streaming: "Надходять дані",
@@ -60,7 +66,7 @@ const positiveStatuses = new Set([
   "applied",
   "streaming",
 ]);
-const warningStatuses = new Set(["degraded", "partial", "warning", "recommended", "medium"]);
+const warningStatuses = new Set(["degraded", "detected", "partial", "warning", "recommended", "medium"]);
 const criticalStatuses = new Set([
   "offline",
   "unavailable",
@@ -95,6 +101,37 @@ export function statusPresentation(status: string) {
     return { label: statusLabel(normalized), className: statusStyles.critical };
   }
   return { label: statusLabel(normalized), className: statusStyles.neutral };
+}
+
+export function protectionStatus(status: string) {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "healthy") {
+    return { label: "Захист працює", tone: "positive" as const };
+  }
+  if (normalized === "degraded") {
+    return { label: "Активне стримування", tone: "warning" as const };
+  }
+  if (["disconnected", "down", "failed", "unavailable"].includes(normalized)) {
+    return { label: "Захист недоступний", tone: "critical" as const };
+  }
+  return { label: "Стан не визначено", tone: "neutral" as const };
+}
+
+export function integrationModeLabel(mode: string) {
+  const labels: Record<string, string> = {
+    active: "Активний захист",
+    shadow: "Спостереження",
+    "dry-run": "Перевірка без виконання",
+  };
+
+  return labels[mode] ?? statusLabel(mode);
+}
+
+export function optionalNumber(value: number | null | undefined, suffix = "") {
+  return value === null || value === undefined
+    ? "—"
+    : `${numberFormatter.format(value)}${suffix}`;
 }
 
 export function quarantineReason(reason: string) {
