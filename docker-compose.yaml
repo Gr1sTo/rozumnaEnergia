@@ -1,5 +1,5 @@
 x-cybersecurity-service: &cybersecurity-service
-  image: "${CYBERSECURITY_IMAGE:-rostyslavkrotenko/cybersecurity-smartenergy:latest}"
+  image: rostyslavkrotenko/cybersecurity-smartenergy:latest
   restart: unless-stopped
   volumes:
     - cybersecurity-data:/work/data/integration
@@ -190,18 +190,18 @@ services:
       GATEWAY_EVENT_LOG_PATH: /work/data/integration/gateways/iot-events.jsonl
       GATEWAY_STATE_PATH: /work/data/integration/gateways/iot-state.json
       GATEWAY_CONTROL_TOKEN: "${GATEWAY_CONTROL_TOKEN:?Set GATEWAY_CONTROL_TOKEN in .env}"
-      GATEWAY_RATE_PER_SECOND: "${GATEWAY_RATE_PER_SECOND:-25}"
-      GATEWAY_BURST_CAPACITY: "${GATEWAY_BURST_CAPACITY:-50}"
-      GATEWAY_COMMAND_RATE_PER_MINUTE: "${GATEWAY_COMMAND_RATE_PER_MINUTE:-12}"
-      GATEWAY_VIOLATION_THRESHOLD: "${GATEWAY_VIOLATION_THRESHOLD:-10}"
-      GATEWAY_VIOLATION_WINDOW_SEC: "${GATEWAY_VIOLATION_WINDOW_SEC:-30}"
-      GATEWAY_BLOCK_TTL_SEC: "${GATEWAY_BLOCK_TTL_SEC:-120}"
-      GATEWAY_UPSTREAM_TIMEOUT_SEC: "${GATEWAY_UPSTREAM_TIMEOUT_SEC:-3}"
-      GATEWAY_CIRCUIT_FAILURE_THRESHOLD: "${GATEWAY_CIRCUIT_FAILURE_THRESHOLD:-5}"
-      GATEWAY_CIRCUIT_RECOVERY_TIMEOUT_SEC: "${GATEWAY_CIRCUIT_RECOVERY_TIMEOUT_SEC:-15}"
-      GATEWAY_STALE_CACHE_TTL_SEC: "${GATEWAY_STALE_CACHE_TTL_SEC:-30}"
+      GATEWAY_RATE_PER_SECOND: "25"
+      GATEWAY_BURST_CAPACITY: "50"
+      GATEWAY_COMMAND_RATE_PER_MINUTE: "12"
+      GATEWAY_VIOLATION_THRESHOLD: "10"
+      GATEWAY_VIOLATION_WINDOW_SEC: "30"
+      GATEWAY_BLOCK_TTL_SEC: "120"
+      GATEWAY_UPSTREAM_TIMEOUT_SEC: "3"
+      GATEWAY_CIRCUIT_FAILURE_THRESHOLD: "5"
+      GATEWAY_CIRCUIT_RECOVERY_TIMEOUT_SEC: "15"
+      GATEWAY_STALE_CACHE_TTL_SEC: "30"
     ports:
-      - "${CYBERSECURITY_GATEWAY_PORT:-6006}:8080"
+      - "6006:8080"
     depends_on:
       backend-kravchenko:
         condition: service_started
@@ -232,8 +232,8 @@ services:
       COLLECTOR_HTTP_ENABLED: "true"
       COLLECTOR_HTTP_TARGETS: >-
         gateway-iot-health|gateway|status|http://cybersecurity-gateway-iot:8080/_cybersecurity/healthz
-      COLLECTOR_HTTP_TIMEOUT_SEC: "${COLLECTOR_HTTP_TIMEOUT_SEC:-2}"
-      COLLECTOR_HTTP_POLL_INTERVAL_SEC: "${COLLECTOR_HTTP_POLL_INTERVAL_SEC:-10}"
+      COLLECTOR_HTTP_TIMEOUT_SEC: "2"
+      COLLECTOR_HTTP_POLL_INTERVAL_SEC: "10"
       COLLECTOR_MQTT_ENABLED: "true"
       COLLECTOR_MQTT_HOST: mosquitto
       COLLECTOR_MQTT_PORT: "1883"
@@ -292,7 +292,7 @@ services:
     environment:
       GATEWAY_CONTROL_URL: http://cybersecurity-gateway-iot:8080
       GATEWAY_CONTROL_TOKEN: "${GATEWAY_CONTROL_TOKEN:?Set GATEWAY_CONTROL_TOKEN in .env}"
-      GATEWAY_CONTROL_TIMEOUT_SECONDS: "${GATEWAY_CONTROL_TIMEOUT_SECONDS:-5}"
+      GATEWAY_CONTROL_TIMEOUT_SECONDS: "5"
       CONTROL_ACTIONS_PATH: /work/data/integration/actions.jsonl
       CONTROL_APPLIED_PATH: /work/data/integration/actions_applied.jsonl
       CONTROL_IDEMPOTENCY_PATH: /work/data/integration/control/iot-idempotency.sqlite3
@@ -300,9 +300,9 @@ services:
       CONTROL_RECOVERY_SCHEDULE_PATH: /work/data/integration/control/iot-recovery-schedule.json
       CONTROL_GATEWAY_SERVICE_ID: iot-gateway
       CONTROL_ACCEPT_GENERIC_ACTIONS: "false"
-      CONTROL_POLL_INTERVAL_SEC: "${CONTROL_POLL_INTERVAL_SEC:-0.5}"
-      CONTROL_DEFAULT_RATE_PER_SECOND: "${GATEWAY_RATE_PER_SECOND:-25}"
-      CONTROL_DEFAULT_BURST_CAPACITY: "${GATEWAY_BURST_CAPACITY:-50}"
+      CONTROL_POLL_INTERVAL_SEC: "0.5"
+      CONTROL_DEFAULT_RATE_PER_SECOND: "25"
+      CONTROL_DEFAULT_BURST_CAPACITY: "50"
       CONTROL_ALLOWED_ISOLATION_COMPONENTS: gateway,api,edge,iot-gateway
     depends_on:
       cybersecurity-gateway-iot:
@@ -328,9 +328,9 @@ services:
       CYBERSECURITY_EVENTS_PATH: /work/data/integration/collected_events.jsonl
       CYBERSECURITY_MQTT_QUARANTINE_PATH: /work/data/integration/quarantine/mqtt-events.jsonl
       CYBERSECURITY_EXTERNAL_READS: "true"
-      CYBERSECURITY_ADAPTER_TIMEOUT_SEC: "${CYBERSECURITY_ADAPTER_TIMEOUT_SEC:-2}"
+      CYBERSECURITY_ADAPTER_TIMEOUT_SEC: "2"
       CYBERSECURITY_ACTIVE_GATEWAYS: >-
-        iot-gateway|Захищений API Smart Energy|http://cybersecurity-gateway-iot:8080/_cybersecurity/state|${CYBERSECURITY_GATEWAY_PORT:-6006}|Smart Energy API
+        iot-gateway|Захищений API Smart Energy|http://cybersecurity-gateway-iot:8080/_cybersecurity/state|6006|Smart Energy API
       CYBERSECURITY_GATEWAY_URL: >-
         http://cybersecurity-gateway-iot:8080/api/v1/telemetry/latest?limit=50
       CYBERSECURITY_BMS_URL: http://backend-service:8000/api/data
@@ -343,10 +343,10 @@ services:
       CYBERSECURITY_MQTT_WS_PORT: "9001"
       CYBERSECURITY_STABILITY_HOST: functional-stability-shevchenko
       CYBERSECURITY_STABILITY_PORT: "8000"
-      CYBERSECURITY_PUBLIC_PORT: "${CYBERSECURITY_API_PORT:-6049}"
-      CYBERSECURITY_CORS_ORIGINS: "${CYBERSECURITY_CORS_ORIGINS:-http://localhost:5173,http://0.0.0.0:5173}"
+      CYBERSECURITY_PUBLIC_PORT: "6008"
+      CYBERSECURITY_CORS_ORIGINS: http://localhost:5173,http://0.0.0.0:5173,http://77.47.192.6:5173
     ports:
-      - "${CYBERSECURITY_API_PORT:-6049}:8000"
+      - "6008:8000"
     healthcheck:
       test:
         - CMD
