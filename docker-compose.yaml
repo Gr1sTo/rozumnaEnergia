@@ -170,6 +170,17 @@ services:
 
   # [Початок] Кротенко — Cybersecurity SmartEnergy
 
+  cybersecurity-storage-init:
+    <<: *cybersecurity-service
+    container_name: cybersecurity-storage-init
+    restart: "no"
+    command:
+      - python
+      - -m
+      - src.shared.storage_init
+    environment:
+      CYBERSECURITY_STORAGE_GENERATION: "2026-09-20-clean-runtime-v1"
+
   cybersecurity-gateway-iot:
     <<: *cybersecurity-service
     container_name: cybersecurity-gateway-iot
@@ -203,6 +214,8 @@ services:
     ports:
       - "6006:8080"
     depends_on:
+      cybersecurity-storage-init:
+        condition: service_completed_successfully
       backend-kravchenko:
         condition: service_started
     healthcheck:
