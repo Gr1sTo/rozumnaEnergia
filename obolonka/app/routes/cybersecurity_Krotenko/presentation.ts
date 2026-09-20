@@ -138,6 +138,7 @@ export function quarantineReason(reason: string) {
   const labels: Record<string, string> = {
     abrupt_value_change: "різкий стрибок",
     invalid_numeric_value: "некоректне число",
+    low_current: "понижений струм",
     outside_physical_bounds: "вихід за фізичні межі",
   };
 
