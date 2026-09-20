@@ -2,7 +2,7 @@ export type ServiceStatus = "online" | "degraded" | "offline" | "unchecked";
 export type AdapterStatus = "ready" | "partial" | "stale" | "unavailable";
 export type SignalLevel = "normal" | "warning" | "critical";
 export type MetricsStatus = "ready" | "no_data";
-export type PolicyStatus = "detected" | "not_detected" | "no_data";
+export type PolicyStatus = "detected" | "partial" | "not_detected" | "no_data";
 
 export interface CybersecurityBackend {
   status: string;
@@ -140,6 +140,10 @@ export interface AdapterResult {
 export interface MetricsSummary {
   policies: number;
   detectedByPolicies: number;
+  selectedPolicy?: string;
+  availabilityPct?: number | null;
+  mttdMin?: number | null;
+  mttrMin?: number | null;
   avgAvailabilityPct: number | null;
   avgMttdMin: number | null;
   avgMttrMin: number | null;
@@ -156,6 +160,9 @@ export interface PolicyMetrics {
   mean_mttd_min: number | null;
   mean_mttr_min: number | null;
   incidents_total: number;
+  scenarios_total?: number;
+  incidents_missed?: number;
+  detection_rate_pct?: number;
   incidents_critical: number;
   incidents_high: number;
   incidents_medium: number;
@@ -163,6 +170,14 @@ export interface PolicyMetrics {
   by_availability_attack: number;
   by_integrity_attack: number;
   by_outage: number;
+}
+
+export interface MetricsScope {
+  status?: MetricsStatus;
+  selectedPolicy?: string;
+  startedAt?: string | null;
+  summary: MetricsSummary;
+  byPolicy: PolicyMetrics[];
 }
 
 export interface Incident {
@@ -241,11 +256,9 @@ export interface CybersecuritySnapshot {
     };
     adapters: AdapterResult[];
   };
-  metrics: {
+  metrics: MetricsScope & {
     generatedAt: string;
-    status?: MetricsStatus;
-    summary: MetricsSummary;
-    byPolicy: PolicyMetrics[];
+    session?: MetricsScope;
   };
   telemetry?: {
     generatedAt: string;
