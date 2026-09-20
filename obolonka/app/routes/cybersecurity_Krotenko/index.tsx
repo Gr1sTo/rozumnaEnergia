@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   ArrowLeft,
@@ -37,7 +37,55 @@ import {
   optionalNumber,
   protectionStatus,
 } from "./presentation";
-import type { QuarantinedTelemetryEvent, TelemetryEvent } from "./types";
+import type {
+  CybersecuritySnapshot,
+  QuarantinedTelemetryEvent,
+  TelemetryEvent,
+} from "./types";
+
+const EXPECTED_POLICIES = ["minimal", "baseline", "standard"] as const;
+
+function hasCompletePolicies(
+  scope: CybersecuritySnapshot["metrics"] | NonNullable<CybersecuritySnapshot["metrics"]["session"]>,
+): boolean {
+  if (scope.status !== "ready") return true;
+  const policies = new Set(scope.byPolicy.map((policy) => policy.policy));
+  return EXPECTED_POLICIES.every((policy) => policies.has(policy));
+}
+
+function isCompleteSnapshot(
+  snapshot: CybersecuritySnapshot,
+  previous: CybersecuritySnapshot | null,
+): boolean {
+  if (
+    previous?.metrics.status === "ready" &&
+    snapshot.metrics.status !== "ready"
+  ) {
+    return false;
+  }
+
+  if (!hasCompletePolicies(snapshot.metrics)) return false;
+
+  if (
+    previous?.metrics.session?.status === "ready" &&
+    snapshot.metrics.session?.status !== "ready"
+  ) {
+    return false;
+  }
+
+  if (snapshot.metrics.session && !hasCompletePolicies(snapshot.metrics.session)) {
+    return false;
+  }
+
+  if (
+    previous &&
+    snapshot.actions.summary.total < previous.actions.summary.total
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -56,7 +104,7 @@ export async function loader(_: Route.LoaderArgs) {
 const emptyTelemetry = {
   status: "waiting" as const,
   topic: "sensor/data",
-  analyzedKeys: ["power_kw", "voltage"],
+  analyzedKeys: ["current_a", "power_kw", "voltage"],
   summary: { visible: 0, analyzed: 0, collectedOnly: 0, quarantined: 0 },
   events: [] as TelemetryEvent[],
   quarantine: {
@@ -70,8 +118,28 @@ const emptyTelemetry = {
 };
 
 export default function CybersecurityDashboard() {
-  const { snapshot, error, fetchedAt } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
+  const lastValidSnapshot = useRef<CybersecuritySnapshot | null>(null);
+  const [comparisonPeriod, setComparisonPeriod] = useState<"experiment" | "session">("session");
+
+  const incomingSnapshot = loaderData.snapshot;
+  const incomingComplete =
+    incomingSnapshot !== null &&
+    isCompleteSnapshot(incomingSnapshot, lastValidSnapshot.current);
+  if (incomingComplete) {
+    lastValidSnapshot.current = incomingSnapshot;
+  }
+
+  const snapshot = incomingComplete
+    ? incomingSnapshot
+    : lastValidSnapshot.current;
+  const error =
+    loaderData.error ??
+    (incomingSnapshot && !incomingComplete
+      ? "Отримано неповний snapshot політик; показано останні коректні дані."
+      : null);
+  const fetchedAt = loaderData.fetchedAt;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -108,10 +176,28 @@ export default function CybersecurityDashboard() {
   }
 
   const telemetry = snapshot.telemetry ?? emptyTelemetry;
-  const metrics = snapshot.metrics.summary;
-  const metricsReady = snapshot.metrics.status
-    ? snapshot.metrics.status === "ready"
-    : metrics.totalIncidents > 0;
+  const sessionMetricsReady = snapshot.metrics.session?.status === "ready";
+  const topMetricsScope = sessionMetricsReady
+    ? snapshot.metrics.session!
+    : snapshot.metrics;
+  const metrics = topMetricsScope.summary;
+  const standardMetrics = topMetricsScope.byPolicy.find(
+    (policy) => policy.policy === "standard",
+  );
+  const standardDetected = standardMetrics?.detected ??
+    (standardMetrics?.incidents_total ?? 0) > 0;
+  const standardAvailability = metrics.availabilityPct ??
+    standardMetrics?.availability_pct;
+  const standardMttd = metrics.mttdMin ?? standardMetrics?.mean_mttd_min;
+  const standardMttr = metrics.mttrMin ?? standardMetrics?.mean_mttr_min;
+  const metricsReady = topMetricsScope.status === "ready" && standardDetected;
+  const metricsPeriodHint = sessionMetricsReady
+    ? "усі інциденти поточної сесії"
+    : "останній завершений інцидент";
+  const comparisonScope =
+    comparisonPeriod === "session" && sessionMetricsReady
+      ? snapshot.metrics.session!
+      : snapshot.metrics;
   const protection = protectionStatus(
     snapshot.backend.coreProtectionStatus ??
       snapshot.backend.integrationHealth ??
@@ -220,21 +306,21 @@ export default function CybersecurityDashboard() {
         <section className="mt-5 grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <MetricCard
             icon={<Gauge className="h-4 w-4" />}
-            label="Розрахункова доступність"
-            value={metricsReady ? optionalNumber(metrics.avgAvailabilityPct, "%") : "Немає даних"}
-            hint="порівняння останнього експерименту"
+            label="Доступність · standard"
+            value={metricsReady ? optionalNumber(standardAvailability, "%") : "Немає даних"}
+            hint={metricsPeriodHint}
           />
           <MetricCard
             icon={<Clock3 className="h-4 w-4" />}
-            label="Порівняльний MTTD"
-            value={metricsReady ? optionalNumber(metrics.avgMttdMin, " хв") : "—"}
-            hint="модельний час виявлення"
+            label="MTTD · standard"
+            value={metricsReady ? optionalNumber(standardMttd, " хв") : "—"}
+            hint={metricsPeriodHint}
           />
           <MetricCard
             icon={<Activity className="h-4 w-4" />}
-            label="Порівняльний MTTR"
-            value={metricsReady ? optionalNumber(metrics.avgMttrMin, " хв") : "—"}
-            hint="модельний час відновлення"
+            label="MTTR · standard"
+            value={metricsReady ? optionalNumber(standardMttr, " хв") : "—"}
+            hint={metricsPeriodHint}
           />
           <MetricCard
             icon={<TriangleAlert className="h-4 w-4" />}
@@ -333,7 +419,7 @@ export default function CybersecurityDashboard() {
 
               <div className="border-t border-white/10 px-4 pb-4 pt-3">
                 <p className="max-w-3xl text-xs leading-5 text-slate-500">
-                  Аномальні voltage і power_kw вилучаються з довіреного аналітичного потоку цього модуля. MQTT broker та інші сервіси Smart Energy не блокуються.
+                  Аномальні voltage, power_kw і current_a вилучаються з довіреного аналітичного потоку цього модуля. MQTT broker та інші сервіси Smart Energy не блокуються.
                 </p>
                 {telemetry.quarantine.events.length ? (
                   <ul className="mt-3 grid gap-x-5 md:grid-cols-2">
@@ -343,7 +429,7 @@ export default function CybersecurityDashboard() {
                   </ul>
                 ) : (
                   <p className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] px-4 py-3 text-sm text-emerald-200">
-                    Карантин порожній — аномальних voltage або power_kw не виявлено.
+                    Карантин порожній — аномальних voltage, power_kw або current_a не виявлено.
                   </p>
                 )}
               </div>
@@ -368,61 +454,97 @@ export default function CybersecurityDashboard() {
           </Section>
         </div>
 
-        <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-2">
-          <Section title="Інциденти">
-            {snapshot.incidents.incidents.length ? (
-              <div className="grid auto-rows-fr gap-3">
-                {snapshot.incidents.incidents.map((incident) => <IncidentCard key={incident.id} incident={incident} />)}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 text-center">
-                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-300" />
-                <p className="mt-3 font-medium text-white">Активних інцидентів немає</p>
-                <p className="mt-1 text-sm text-slate-400">Gateway і MQTT-потік продовжують аналізуватися.</p>
-              </div>
-            )}
-            {recentlyResolved.length ? (
-              <div className="mt-6 border-t border-white/10 pt-5">
-                <h3 className="text-sm font-semibold text-slate-300">Нещодавно завершені</h3>
-                <div className="mt-3 grid auto-rows-fr gap-3">
-                  {recentlyResolved.map((incident) => <IncidentCard key={incident.id} incident={incident} />)}
+        <div className="mt-6 grid min-w-0 items-start gap-6 lg:grid-cols-2">
+          <div className="min-w-0">
+            <Section title="Інциденти">
+              {snapshot.incidents.incidents.length ? (
+                <div className="grid auto-rows-fr gap-3">
+                  {snapshot.incidents.incidents.map((incident) => <IncidentCard key={incident.id} incident={incident} />)}
                 </div>
-              </div>
-            ) : null}
-          </Section>
-
-          <Section title="Журнал дій">
-            <ul>
-              {visibleActions.length ? (
-                visibleActions.map((action) => <ActionRow key={action.id} action={action} />)
               ) : (
-                <li className="py-8 text-center text-sm text-slate-500">Дій реагування ще немає.</li>
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 text-center">
+                  <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-300" />
+                  <p className="mt-3 font-medium text-white">Активних інцидентів немає</p>
+                  <p className="mt-1 text-sm text-slate-400">Gateway і MQTT-потік продовжують аналізуватися.</p>
+                </div>
               )}
-            </ul>
-            {archivedActions.length ? (
-              <details className="group mt-3 overflow-hidden rounded-xl border border-white/10 bg-slate-950/30">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
-                  <span>Історія — ще {archivedActions.length}</span>
-                  <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
-                </summary>
-                <ul className="border-t border-white/10 px-4">
-                  {archivedActions.map((action) => <ActionRow key={action.id} action={action} />)}
-                </ul>
-              </details>
-            ) : null}
-          </Section>
+              {recentlyResolved.length ? (
+                <div className="mt-6 border-t border-white/10 pt-5">
+                  <h3 className="text-sm font-semibold text-slate-300">Нещодавно завершені</h3>
+                  <div className="mt-3 grid auto-rows-fr gap-3">
+                    {recentlyResolved.map((incident) => <IncidentCard key={incident.id} incident={incident} />)}
+                  </div>
+                </div>
+              ) : null}
+            </Section>
+          </div>
+
+          <div className="min-w-0">
+            <Section title="Журнал дій">
+              <ul className="min-w-0">
+                {visibleActions.length ? (
+                  visibleActions.map((action) => <ActionRow key={action.id} action={action} />)
+                ) : (
+                  <li className="py-8 text-center text-sm text-slate-500">Дій реагування ще немає.</li>
+                )}
+              </ul>
+              {archivedActions.length ? (
+                <details className="group mt-3 overflow-hidden rounded-xl border border-white/10 bg-slate-950/30">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
+                    <span>Історія — ще {archivedActions.length}</span>
+                    <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <ul className="border-t border-white/10 px-4">
+                    {archivedActions.map((action) => <ActionRow key={action.id} action={action} />)}
+                  </ul>
+                </details>
+              ) : null}
+            </Section>
+          </div>
         </div>
 
         <div className="mt-6">
           <Section
             title="Порівняння політик стійкості"
-            description="Розрахункові метрики останнього експерименту. Шкала доступності та шкали часу відокремлені."
+            description={
+              comparisonPeriod === "session" && sessionMetricsReady
+                ? "Накопичувальні метрики за всіма інцидентами поточної сесії."
+                : "Розрахункові метрики останнього завершеного інциденту."
+            }
           >
-            {snapshot.metrics.byPolicy.length ? (
-              <PolicyComparisonChart policies={snapshot.metrics.byPolicy} />
+            <div className="mb-4 inline-flex rounded-xl border border-white/10 bg-slate-950/45 p-1 text-sm">
+              <button
+                type="button"
+                onClick={() => setComparisonPeriod("experiment")}
+                className={[
+                  "rounded-lg px-3 py-2 transition",
+                  comparisonPeriod === "experiment"
+                    ? "bg-cyan-400/15 text-cyan-200"
+                    : "text-slate-400 hover:text-slate-200",
+                ].join(" ")}
+              >
+                Останній інцидент
+              </button>
+              <button
+                type="button"
+                onClick={() => setComparisonPeriod("session")}
+                disabled={!sessionMetricsReady}
+                className={[
+                  "rounded-lg px-3 py-2 transition",
+                  comparisonPeriod === "session" && sessionMetricsReady
+                    ? "bg-cyan-400/15 text-cyan-200"
+                    : "text-slate-400 hover:text-slate-200",
+                  !sessionMetricsReady ? "cursor-not-allowed opacity-40" : "",
+                ].join(" ")}
+              >
+                Поточна сесія
+              </button>
+            </div>
+            {comparisonScope.byPolicy.length ? (
+              <PolicyComparisonChart policies={comparisonScope.byPolicy} />
             ) : (
               <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
-                Немає даних завершеного експерименту.
+                Для вибраного періоду ще немає інцидентів.
               </p>
             )}
           </Section>
