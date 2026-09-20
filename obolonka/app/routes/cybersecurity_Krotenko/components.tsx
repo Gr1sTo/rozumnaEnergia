@@ -58,7 +58,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="h-full rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/20 backdrop-blur sm:p-6">
+    <section className="h-full min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/20 backdrop-blur sm:p-6">
       <div className="mb-5">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
         {description ? <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-400">{description}</p> : null}
@@ -193,7 +193,7 @@ export function IncidentCard({ incident }: { incident: Incident }) {
   const resolved = incident.status === "resolved";
   const cardStyle = resolved ? "border-white/10 bg-white/[0.03]" : "border-rose-400/20 bg-rose-400/[0.06]";
   return (
-    <article className={["flex h-full min-h-44 flex-col rounded-2xl border p-4", cardStyle].join(" ")}>
+    <article className={["flex h-full min-h-44 min-w-0 flex-col overflow-hidden rounded-2xl border p-4", cardStyle].join(" ")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-white">{incident.title}</p>
@@ -213,7 +213,7 @@ export function IncidentCard({ incident }: { incident: Incident }) {
 
 export function ActionRow({ action }: { action: DispatchAction }) {
   return (
-    <li className="flex min-h-24 flex-col gap-3 border-b border-white/5 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex min-h-24 min-w-0 flex-col gap-3 overflow-hidden border-b border-white/5 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <p className="font-medium text-white">{action.title}</p>
         <p className="mt-1 break-words text-sm leading-6 text-slate-400">{action.description}</p>
@@ -237,48 +237,57 @@ function Bar({ value, maximum, color }: { value: number; maximum: number; color:
 
 export function PolicyComparisonChart({ policies }: { policies: PolicyMetrics[] }) {
   const isDetected = (policy: PolicyMetrics) => policy.detected ?? policy.incidents_total > 0;
+  const hasScenarioData = (policy: PolicyMetrics) =>
+    (policy.scenarios_total ?? policy.incidents_total) > 0;
   const policyStatus = (policy: PolicyMetrics) =>
     policy.status ?? (isDetected(policy) ? "detected" : "no_data");
-  const detected = policies.filter(isDetected);
-  const maxMttd = Math.max(...detected.map((policy) => policy.mean_mttd_min ?? 0), 1);
-  const maxMttr = Math.max(...detected.map((policy) => policy.mean_mttr_min ?? 0), 1);
+  const comparable = policies.filter(hasScenarioData);
+  const maxMttd = Math.max(...comparable.map((policy) => policy.mean_mttd_min ?? 0), 1);
+  const maxMttr = Math.max(...comparable.map((policy) => policy.mean_mttr_min ?? 0), 1);
   return (
     <div className="grid gap-3 lg:grid-cols-3">
-      {policies.map((policy) => (
-        <article key={policy.policy} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-semibold capitalize text-white">{policy.policy}</p>
-            <StatusBadge status={policyStatus(policy)} />
-          </div>
-          {isDetected(policy) ? (
-            <div className="mt-5 space-y-4">
-              <div>
-                <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
-                  <span>Розрахункова доступність</span><span>{optionalNumber(policy.availability_pct, "%")}</span>
-                </div>
-                <Bar value={policy.availability_pct ?? 0} maximum={100} color="bg-emerald-400" />
-              </div>
-              <div>
-                <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
-                  <span>Порівняльний MTTD</span><span>{optionalNumber(policy.mean_mttd_min, " хв")}</span>
-                </div>
-                <Bar value={policy.mean_mttd_min ?? 0} maximum={maxMttd} color="bg-cyan-400" />
-              </div>
-              <div>
-                <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
-                  <span>Порівняльний MTTR</span><span>{optionalNumber(policy.mean_mttr_min, " хв")}</span>
-                </div>
-                <Bar value={policy.mean_mttr_min ?? 0} maximum={maxMttr} color="bg-amber-400" />
-              </div>
-              <p className="text-xs text-slate-500">Виявлено інцидентів: {policy.incidents_total}</p>
+      {policies.map((policy) => {
+        const scenarioCount = policy.scenarios_total ?? policy.incidents_total;
+        const missedCount = policy.incidents_missed ?? Math.max(0, scenarioCount - policy.incidents_total);
+        return (
+          <article key={policy.policy} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-semibold capitalize text-white">{policy.policy}</p>
+              <StatusBadge status={policyStatus(policy)} />
             </div>
-          ) : (
-            <p className="mt-5 text-sm leading-6 text-slate-500">
-              {policyStatus(policy) === "no_data" ? "Немає даних завершеного експерименту." : "Ця політика не виявила інцидент у поточному експерименті."}
-            </p>
-          )}
-        </article>
-      ))}
+            {hasScenarioData(policy) ? (
+              <div className="mt-5 space-y-4">
+                <div>
+                  <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
+                    <span>Доступність</span><span>{optionalNumber(policy.availability_pct, "%")}</span>
+                  </div>
+                  <Bar value={policy.availability_pct ?? 0} maximum={100} color="bg-emerald-400" />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
+                    <span>Порівняльний MTTD</span><span>{optionalNumber(policy.mean_mttd_min, " хв")}</span>
+                  </div>
+                  <Bar value={policy.mean_mttd_min ?? 0} maximum={maxMttd} color="bg-cyan-400" />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex justify-between gap-3 text-xs text-slate-400">
+                    <span>Порівняльний MTTR</span><span>{optionalNumber(policy.mean_mttr_min, " хв")}</span>
+                  </div>
+                  <Bar value={policy.mean_mttr_min ?? 0} maximum={maxMttr} color="bg-amber-400" />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Виявлено: {policy.incidents_total} із {scenarioCount}
+                  {missedCount > 0 ? " · пропущено: " + missedCount : ""}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-5 text-sm leading-6 text-slate-500">
+                {policyStatus(policy) === "no_data" ? "Для вибраного періоду ще немає даних." : "Ця політика не виявила інцидентів у вибраному періоді."}
+              </p>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 }
