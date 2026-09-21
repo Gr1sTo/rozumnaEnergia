@@ -212,7 +212,7 @@ services:
       GATEWAY_CIRCUIT_RECOVERY_TIMEOUT_SEC: "15"
       GATEWAY_STALE_CACHE_TTL_SEC: "30"
     ports:
-      - "6006:8080"
+      - "6008:8080"
     depends_on:
       cybersecurity-storage-init:
         condition: service_completed_successfully
@@ -343,7 +343,7 @@ services:
       CYBERSECURITY_EXTERNAL_READS: "true"
       CYBERSECURITY_ADAPTER_TIMEOUT_SEC: "2"
       CYBERSECURITY_ACTIVE_GATEWAYS: >-
-        iot-gateway|Захищений API Smart Energy|http://cybersecurity-gateway-iot:8080/_cybersecurity/state|6006|Smart Energy API
+        iot-gateway|Захищений API Smart Energy|http://cybersecurity-gateway-iot:8080/_cybersecurity/state|6008|Smart Energy API
       CYBERSECURITY_GATEWAY_URL: >-
         http://cybersecurity-gateway-iot:8080/api/v1/telemetry/latest?limit=50
       CYBERSECURITY_BMS_URL: http://backend-service:8000/api/data
@@ -358,8 +358,8 @@ services:
       CYBERSECURITY_STABILITY_PORT: "8000"
       CYBERSECURITY_PUBLIC_PORT: "6008"
       CYBERSECURITY_CORS_ORIGINS: http://localhost:5173,http://0.0.0.0:5173,http://77.47.192.6:5173
-    ports:
-      - "6008:8000"
+    expose:
+      - "8000"
     healthcheck:
       test:
         - CMD
