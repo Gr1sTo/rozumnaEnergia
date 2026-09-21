@@ -55,32 +55,10 @@ function hasCompletePolicies(
 
 function isCompleteSnapshot(
   snapshot: CybersecuritySnapshot,
-  previous: CybersecuritySnapshot | null,
 ): boolean {
-  if (
-    previous?.metrics.status === "ready" &&
-    snapshot.metrics.status !== "ready"
-  ) {
-    return false;
-  }
-
   if (!hasCompletePolicies(snapshot.metrics)) return false;
 
-  if (
-    previous?.metrics.session?.status === "ready" &&
-    snapshot.metrics.session?.status !== "ready"
-  ) {
-    return false;
-  }
-
   if (snapshot.metrics.session && !hasCompletePolicies(snapshot.metrics.session)) {
-    return false;
-  }
-
-  if (
-    previous &&
-    snapshot.actions.summary.total < previous.actions.summary.total
-  ) {
     return false;
   }
 
@@ -126,7 +104,7 @@ export default function CybersecurityDashboard() {
   const incomingSnapshot = loaderData.snapshot;
   const incomingComplete =
     incomingSnapshot !== null &&
-    isCompleteSnapshot(incomingSnapshot, lastValidSnapshot.current);
+    isCompleteSnapshot(incomingSnapshot);
   if (incomingComplete) {
     lastValidSnapshot.current = incomingSnapshot;
   }
