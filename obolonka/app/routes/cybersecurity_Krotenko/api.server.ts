@@ -1,21 +1,20 @@
-import { CYBERSECURITY_API_URL } from "consts";
-
 import type {
   CybersecurityDashboardData,
   CybersecuritySnapshot,
 } from "./types";
 
 const SNAPSHOT_TIMEOUT_MS = 8_000;
+const DEFAULT_CYBERSECURITY_API_URL = "http://cybersecurity-api:8000/api";
 
 /**
  * Завантажує агрегований snapshot на серверній стороні React Router.
- * У Docker Compose використовується внутрішня адреса сервісу, а поза Compose —
- * публічна адреса з consts.ts. Службова адреса не передається у браузер.
+ * Використовує внутрішню адресу сервісу з Docker Compose. За потреби адресу
+ * можна перевизначити через CYBERSECURITY_API_URL; у браузер вона не передається.
  */
 export async function loadCybersecurityDashboard(): Promise<CybersecurityDashboardData> {
   const fetchedAt = new Date().toISOString();
   const apiBaseUrl = (
-    process.env.CYBERSECURITY_API_URL ?? CYBERSECURITY_API_URL
+    process.env.CYBERSECURITY_API_URL ?? DEFAULT_CYBERSECURITY_API_URL
   ).replace(/\/$/, "");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SNAPSHOT_TIMEOUT_MS);
