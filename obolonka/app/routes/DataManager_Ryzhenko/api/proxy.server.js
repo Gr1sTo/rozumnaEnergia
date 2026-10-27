@@ -3,7 +3,6 @@ import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { Buffer } from "node:buffer";
 import { env as processEnv } from "node:process";
 
-// Node 24 uses the cloud egress proxy; Node 20 uses ordinary direct requests.
 const agents = {
   "http:": new HttpAgent({ keepAlive: true, proxyEnv: processEnv }),
   "https:": new HttpsAgent({ keepAlive: true, proxyEnv: processEnv }),
@@ -92,7 +91,6 @@ function proxyRequest(target, request, body, timeoutMs) {
         agent: agents[target.protocol],
         headers,
       }, (response) => {
-        // A redirect must never carry a document Bearer token to another target.
         if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
           response.destroy();
           finish(problem(502, "API повернув непідтримуване перенаправлення."));
@@ -134,8 +132,6 @@ function proxyRequest(target, request, body, timeoutMs) {
     }
   });
 }
-
-// The factory is used by isolated local-upstream tests; targets are server-owned.
 export function createDataManagerProxy({ env = processEnv, timeoutMs = 15_000 } = {}) {
   return async function proxyDataManagerRequest({ request, params }) {
     const service = params.service;

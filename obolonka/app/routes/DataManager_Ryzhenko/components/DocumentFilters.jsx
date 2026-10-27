@@ -207,7 +207,6 @@ export default function DocumentFilters({ filters = {}, onApply, onReset, disabl
     Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== ""
   ).length;
 
-  // Applied filters reset the draft; typing alone never triggers an API request.
   return (
     <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
       <h3>

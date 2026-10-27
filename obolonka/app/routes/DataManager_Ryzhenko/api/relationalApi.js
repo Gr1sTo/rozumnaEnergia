@@ -15,7 +15,6 @@ function isSensorId(value) {
 }
 
 function timestamp(value) {
-  // A date-time must include a timezone; never reinterpret a local input as UTC.
   if (typeof value !== "string" ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
     throw new Error("Укажіть дату й час у форматі ISO 8601 із часовим поясом");
@@ -77,7 +76,6 @@ async function request(path, { signal, body } = {}) {
       if (typeof error.detail === "string") message = error.detail;
       else if (typeof error.message === "string") message = error.message;
     } catch {
-      // Keep an actionable status message for non-JSON error responses.
     }
     signal?.throwIfAborted();
     throw new RelationalApiError(message, response.status);

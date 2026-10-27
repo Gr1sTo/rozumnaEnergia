@@ -171,7 +171,7 @@ export default function DocumentAddModal({ onClose, onSave }) {
               <input
                 value={entityId}
                 onChange={(e) => setEntityId(e.target.value)}
-                placeholder="Наприклад, ryzhenko-panel-001"
+                placeholder="Наприклад, new-panel-001"
                 className="w-full rounded-lg border border-slate-300 p-2"
               />
             </div>
@@ -199,7 +199,7 @@ export default function DocumentAddModal({ onClose, onSave }) {
               <input
                 value={tagsText}
                 onChange={(e) => setTagsText(e.target.value)}
-                placeholder="test, ryzhenko"
+                placeholder="test, test1"
                 className="w-full rounded-lg border border-slate-300 p-2"
               />
             </div>

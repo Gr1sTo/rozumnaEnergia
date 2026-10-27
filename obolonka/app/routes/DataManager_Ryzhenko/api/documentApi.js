@@ -13,8 +13,6 @@ export async function getDocumentTypes() {
 
   return result.data;
 }
-
-// Один запит — одна серверна сторінка; теги передаються повторними параметрами.
 export async function getDocumentData(options = {}) {
   const { page = 1, page_size = 10, tags, signal } = options;
   const params = documentPageParams(page, page_size);

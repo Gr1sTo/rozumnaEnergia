@@ -54,7 +54,6 @@ export async function documentRequest(path, options = {}) {
 
     try {
       const errorData = await response.json();
-      // Validation errors may echo submitted passwords in "input"; retain only diagnostics.
       details = Array.isArray(errorData.detail)
         ? errorData.detail.map((item) => Object.fromEntries(
           ["loc", "msg", "type"].filter((field) => item[field] !== undefined)
@@ -80,7 +79,6 @@ export async function documentRequest(path, options = {}) {
   }
 
   const result = await response.json();
-  // Запізніла відповідь не повинна потрапити в нову сесію.
   checkRequestContext(token, options.signal);
 
   return result;
